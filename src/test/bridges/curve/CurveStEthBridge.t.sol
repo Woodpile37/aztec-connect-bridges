@@ -111,9 +111,8 @@ contract CurveStEthBridgeTest is BridgeTestBase {
         uint256 depositAmount = 1e18;
         vm.deal(address(bridge), depositAmount);
 
-        // Making minDy bigger than expected minDy to cause the swap to fail
-        uint256 minDy = _computeEthToWST(depositAmount) + 1e17;
-        uint64 minPrice = uint64((minDy * bridge.PRECISION()) / depositAmount);
+        uint256 expectedPrice = CURVE_POOL.get_dy(0, 1, depositAmount);
+        uint64 minPrice = uint64((expectedPrice * 101) / 100); // Min price is 1% larger than what we should receive
 
         vm.prank(address(ROLLUP_PROCESSOR));
         vm.expectRevert("Exchange resulted in fewer coins than expected");
@@ -124,9 +123,8 @@ contract CurveStEthBridgeTest is BridgeTestBase {
         uint256 depositAmount = 1e18;
         deal(address(WRAPPED_STETH), address(bridge), depositAmount);
 
-        // Making minDy bigger than expected minDy to cause the swap to fail
-        uint256 minDy = _computeWSTHToEth(depositAmount) + 1e17;
-        uint64 minPrice = uint64((minDy * bridge.PRECISION()) / depositAmount);
+        uint256 expectedPrice = CURVE_POOL.get_dy(1, 0, depositAmount);
+        uint64 minPrice = uint64((expectedPrice * 101) / 100); // Min price is 1% larger than what we should receive
 
         vm.prank(address(ROLLUP_PROCESSOR));
         vm.expectRevert("Exchange resulted in fewer coins than expected");
@@ -157,10 +155,8 @@ contract CurveStEthBridgeTest is BridgeTestBase {
         uint256 beforeWstETHBalance = WRAPPED_STETH.balanceOf(address(ROLLUP_PROCESSOR));
 
         uint256 wstEthIncrease = _computeEthToWST(_depositAmount);
-        // Set minPrice in such a way that computed minDy is equal to wstEthIncrease
-        uint64 minPrice = uint64((wstEthIncrease * bridge.PRECISION()) / _depositAmount);
 
-        uint256 bridgeId = encodeBridgeId(id, ethAsset, emptyAsset, wstETHAsset, emptyAsset, minPrice);
+        uint256 bridgeId = encodeBridgeId(id, ethAsset, emptyAsset, wstETHAsset, emptyAsset, 0);
         vm.expectEmit(true, true, false, true);
         emit DefiBridgeProcessed(bridgeId, getNextNonce(), _depositAmount, wstEthIncrease, 0, true, "");
         sendDefiRollup(bridgeId, _depositAmount);
@@ -180,10 +176,8 @@ contract CurveStEthBridgeTest is BridgeTestBase {
         uint256 beforeWstEthBalance = WRAPPED_STETH.balanceOf(address(ROLLUP_PROCESSOR));
 
         uint256 expectedEth = _computeWSTHToEth(_depositAmount);
-        // Set minPrice in such a way that computed minDy is equal to expectedEth
-        uint64 minPrice = uint64((expectedEth * bridge.PRECISION()) / _depositAmount);
 
-        uint256 bridgeId = encodeBridgeId(id, wstETHAsset, emptyAsset, ethAsset, emptyAsset, minPrice);
+        uint256 bridgeId = encodeBridgeId(id, wstETHAsset, emptyAsset, ethAsset, emptyAsset, 0);
         vm.expectEmit(true, true, false, true);
         emit DefiBridgeProcessed(bridgeId, getNextNonce(), _depositAmount, expectedEth, 0, true, "");
         sendDefiRollup(bridgeId, _depositAmount);
